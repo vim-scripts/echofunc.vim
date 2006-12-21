@@ -1,0 +1,43 @@
+This is a mirror of http://www.vim.org/scripts/script.php?script_id=1735
+
+Authors:
+              Ming Bai <mbbill AT gmail DOT com>,
+              Wu Yongwei <wuyongwei AT gmail DOT com>
+
+Usage:
+              When you type '(' after a function name
+              in insert mode, the function declaration
+              will be displayed in the command line
+              automatically. Then you may use Alt+- and
+              Alt+= (configurable via EchoFuncKeyPrev
+              and EchoFuncKeyNext) to cycle between
+              function declarations (if exists).
+
+              Another feature is to provide a balloon tip
+              when the mouse cursor hovers a function name,
+              macro name, etc. This works with when
+              +balloon_eval is compiled in.
+
+Options:
+              g:EchoFuncLangsDict
+                Dictionary to map the Vim file types to
+                tags languages that should be used. You do
+                not need to touch it in most cases.
+              g:EchoFuncLangsUsed
+                File types to enable echofunc, in case you
+                do not want to use EchoFunc on all file
+                types supported. Example:
+                  let g:EchoFuncLangsUsed = ["java","cpp"]
+              g:EchoFuncMaxBalloonDeclarations
+                Maximum lines to display in balloon declarations.
+              g:EchoFuncKeyNext
+                Key to echo the next function
+              g:EchoFuncKeyPrev
+                Key to echo the previous function
+
+Thanks:       edyfox
+
+
+Screen shot:
+   http://mbbill.googlepages.com/echofunc.PNG
+
