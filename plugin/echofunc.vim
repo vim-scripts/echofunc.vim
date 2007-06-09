@@ -3,8 +3,8 @@
 " Brief:        Echo the function declaration in
 "               the command line for C/C++.
 " Author:       Mingbai <mbbill AT gmail DOT com>
-" Last Change:  2006-12-21 23:47:31
-" Version:      1.1
+" Last Change: 2007-06-09 23:03:22
+" Version:      1.2
 "
 " Install:      1. Put echofunc.vim to /plugin directory.
 "               2. Use the command below to reate tags 
@@ -16,6 +16,8 @@
 "               will be displayed in the command line
 "               automatically. Then use ctrl+n, ctrl+b to
 "               cycle between function declarations (if exists).
+"
+" Thanks:       edyfox
 "               
 "==================================================
 
@@ -23,11 +25,17 @@ let s:res=[]
 let s:count=1
 let s:bShowMode=&showmode
 let s:CmdHeight=&cmdheight
-autocmd BufReadPost * call EchoFuncStart()
+autocmd BufReadPost * call EchoFuncStart() | call BalloonDeclarationStart()
 menu        &Tools.Echo\ Function\ Start          :call EchoFuncStart()<CR>
 menu        &Tools.Echo\ Function\ Stop           :call EchoFuncStop()<CR>
 
+menu        &Tools.Balloon\ Declaration\ Start          :call BalloonDeclarationStart()<CR>
+menu        &Tools.Balloon\ Declaration\ Stop           :call BalloonDeclarationStop()<CR>
+
 function! s:EchoFuncDisplay()
+    if len(s:res) == 0
+        return
+    endif
     set noshowmode
     let wincolumn=&columns
     if len(s:res[s:count-1]) > (wincolumn-12)
@@ -38,16 +46,21 @@ function! s:EchoFuncDisplay()
     echohl Type | echo s:res[s:count-1] | echohl None
 endfunction
 
-function! EchoFunc()
-    let fun=substitute(getline('.')[:(col('.'))],'\zs.*\W\ze\w*$','','g') " get function name
-    let ftags=taglist(fun)
-    if type(ftags)==type(0) || ((type(ftags)==type([])) && ftags==[])
+function! s:GetFunctions(fun, fn_only)
+    let s:res=[]
+    let ftags=taglist(a:fun)
+    if (type(ftags)==type(0) || ((type(ftags)==type([])) && ftags==[]))
+        \ && a:fn_only
         return
     endif
     let fil_tag=[]
     for i in ftags
         if has_key(i,'kind') && has_key(i,'name') && has_key(i,'signature')
-            if (i.kind=='p' || i.kind=='f') && i.name==fun  " p is declare, f is defination
+            if (i.kind=='p' || i.kind=='f' || a:fn_only == 0) && i.name==a:fun " p is declare, f is defination
+                let fil_tag+=[i]
+            endif
+        else
+            if a:fn_only == 0 && i.name == a:fun
                 let fil_tag+=[i]
             endif
         endif
@@ -55,12 +68,20 @@ function! EchoFunc()
     if fil_tag==[]
         return
     endif
-    let s:res=[]
     let s:count=1
     for i in fil_tag
-        let name=substitute(i.cmd[2:],i.name.'.*','','g').i.name.i.signature
+        if has_key(i,'kind') && has_key(i,'name') && has_key(i,'signature')
+            let name=substitute(i.cmd[2:],i.name.'.*','','g').i.name.i.signature
+        else
+            let name=substitute(i.cmd[2:],i.name.'.*','','g').i.name
+        endif
         let s:res+=[name.' ('.(index(fil_tag,i)+1).'/'.len(fil_tag).') '.i.filename]
     endfor
+endfunction
+
+function! EchoFunc()
+    let fun=substitute(getline('.')[:(col('.'))],'\zs.*\W\ze\w*$','','g') " get function name
+    call s:GetFunctions(fun, 1)
     call s:EchoFuncDisplay()
 endfunction
 
@@ -90,14 +111,14 @@ endfunction
 
 function! EchoFuncStart()
     inoremap    <silent>    <buffer>    (       <c-r>=EchoFunc()<cr><bs>(
-    inoremap    <silent>    <buffer>    <m-n>   <c-r>=EchoFuncN()<cr><bs>
-    inoremap    <silent>    <buffer>    <m-b>   <c-r>=EchoFuncP()<cr><bs>
+    inoremap    <silent>    <buffer>    <leader>n   <c-r>=EchoFuncN()<cr><bs>
+    inoremap    <silent>    <buffer>    <leader>p   <c-r>=EchoFuncP()<cr><bs>
 endfunction
 
 function! EchoFuncStop()
     iunmap      <buffer>    (
-    iunmap      <buffer>    <m-n>
-    iunmap      <buffer>    <m-b>
+    iunmap      <buffer>    <leader>n
+    iunmap      <buffer>    <leader>p
 endfunction
 
 function! s:RestoreSettings()
@@ -107,7 +128,24 @@ function! s:RestoreSettings()
     exec "set cmdheight=".s:CmdHeight
 endfunction
 
+function! BalloonDeclaration()
+    call s:GetFunctions(v:beval_text, 0)
+    let result = ""
+    for item in s:res
+        let result = result . item . "\n"
+    endfor
+    return strpart(result, 0, len(result) - 1)
+endfunction
 
+function! BalloonDeclarationStart()
+    set ballooneval
+    set balloonexpr=BalloonDeclaration()
+endfunction
+
+function! BalloonDeclarationStop()
+    set balloonexpr=
+    set noballooneval
+endfunction
 
 if has("autocmd") && !exists("au_restoremode_loaded")
     let au_restoremode_loaded=1
