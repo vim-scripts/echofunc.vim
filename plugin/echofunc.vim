@@ -3,22 +3,22 @@
 " Brief:        Echo the function declaration in
 "               the command line for C/C++.
 " Author:       Mingbai <mbbill AT gmail DOT com>
-" Last Change: 2007-06-09 23:03:22
-" Version:      1.2
+" Last Change: 2007-07-23 15:04:53
+" Version:      1.3
 "
 " Install:      1. Put echofunc.vim to /plugin directory.
-"               2. Use the command below to reate tags 
+"               2. Use the command below to reate tags
 "                  file including signature field.
 "                  ctags --fields=+S .
 "
-" Usage:        When you type '(' after a function name 
+" Usage:        When you type '(' after a function name
 "               in insert mode, the function declaration
 "               will be displayed in the command line
 "               automatically. Then use ctrl+n, ctrl+b to
 "               cycle between function declarations (if exists).
 "
 " Thanks:       edyfox
-"               
+"
 "==================================================
 
 let s:res=[]
@@ -50,7 +50,7 @@ function! s:GetFunctions(fun, fn_only)
     let s:res=[]
     let ftags=taglist(a:fun)
     if (type(ftags)==type(0) || ((type(ftags)==type([])) && ftags==[]))
-        \ && a:fn_only
+"        \ && a:fn_only
         return
     endif
     let fil_tag=[]
@@ -111,8 +111,8 @@ endfunction
 
 function! EchoFuncStart()
     inoremap    <silent>    <buffer>    (       <c-r>=EchoFunc()<cr><bs>(
-    inoremap    <silent>    <buffer>    <leader>n   <c-r>=EchoFuncN()<cr><bs>
-    inoremap    <silent>    <buffer>    <leader>p   <c-r>=EchoFuncP()<cr><bs>
+"    inoremap    <silent>    <buffer>    <leader>n   <c-r>=EchoFuncN()<cr><bs>
+"    inoremap    <silent>    <buffer>    <leader>p   <c-r>=EchoFuncP()<cr><bs>
 endfunction
 
 function! EchoFuncStop()
