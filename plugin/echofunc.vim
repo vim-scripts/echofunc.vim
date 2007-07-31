@@ -3,8 +3,8 @@
 " Brief:        Echo the function declaration in
 "               the command line for C/C++.
 " Author:       Mingbai <mbbill AT gmail DOT com>
-" Last Change: 2007-07-23 15:04:53
-" Version:      1.3
+" Last Change: 2007-07-31 17:24:24
+" Version:      1.4
 "
 " Install:      1. Put echofunc.vim to /plugin directory.
 "               2. Use the command below to reate tags
@@ -25,12 +25,15 @@ let s:res=[]
 let s:count=1
 let s:bShowMode=&showmode
 let s:CmdHeight=&cmdheight
-autocmd BufReadPost * call EchoFuncStart() | call BalloonDeclarationStart()
+autocmd BufReadPost * call EchoFuncStart()
 menu        &Tools.Echo\ Function\ Start          :call EchoFuncStart()<CR>
 menu        &Tools.Echo\ Function\ Stop           :call EchoFuncStop()<CR>
 
-menu        &Tools.Balloon\ Declaration\ Start          :call BalloonDeclarationStart()<CR>
-menu        &Tools.Balloon\ Declaration\ Stop           :call BalloonDeclarationStop()<CR>
+if has("balloon_eval")
+    autocmd BufReadPost * call BalloonDeclarationStart()
+    menu        &Tools.Balloon\ Declaration\ Start          :call BalloonDeclarationStart()<CR>
+    menu        &Tools.Balloon\ Declaration\ Stop           :call BalloonDeclarationStop()<CR>
+endif
 
 function! s:EchoFuncDisplay()
     if len(s:res) == 0
