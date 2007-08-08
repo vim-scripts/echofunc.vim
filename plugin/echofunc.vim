@@ -3,8 +3,8 @@
 " Brief:        Echo the function declaration in
 "               the command line for C/C++.
 " Author:       Mingbai <mbbill AT gmail DOT com>
-" Last Change: 2007-07-31 17:24:24
-" Version:      1.4
+" Last Change:  2007/08/08 10:18:47
+" Version:      1.6
 "
 " Install:      1. Put echofunc.vim to /plugin directory.
 "               2. Use the command below to reate tags
@@ -14,25 +14,31 @@
 " Usage:        When you type '(' after a function name
 "               in insert mode, the function declaration
 "               will be displayed in the command line
-"               automatically. Then use ctrl+n, ctrl+b to
+"               automatically. Then use alt+-, alt+= to
 "               cycle between function declarations (if exists).
 "
 " Thanks:       edyfox
 "
 "==================================================
 
+" Vim version 7.x is needed.
+if v:version < 700
+     echohl ErrorMsg | echomsg "Echofunc.vim needs vim version >= 7.0!" | echohl None
+     finish
+endif
+
 let s:res=[]
 let s:count=1
 let s:bShowMode=&showmode
 let s:CmdHeight=&cmdheight
-autocmd BufReadPost * call EchoFuncStart()
-menu        &Tools.Echo\ Function\ Start          :call EchoFuncStart()<CR>
-menu        &Tools.Echo\ Function\ Stop           :call EchoFuncStop()<CR>
+autocmd BufReadPost * call CheckedEchoFuncStart()
+menu        &Tools.Echo\ Function.Echo\ Function\ Start          :call EchoFuncStart()<CR>
+menu        &Tools.Echo\ Function.Echo\ Function\ Stop           :call EchoFuncStop()<CR>
 
 if has("balloon_eval")
-    autocmd BufReadPost * call BalloonDeclarationStart()
-    menu        &Tools.Balloon\ Declaration\ Start          :call BalloonDeclarationStart()<CR>
-    menu        &Tools.Balloon\ Declaration\ Stop           :call BalloonDeclarationStop()<CR>
+    autocmd BufReadPost * call CheckedBalloonDeclarationStart()
+    menu        &Tools.Echo\ Function.Balloon\ Declaration\ Start          :call BalloonDeclarationStart()<CR>
+    menu        &Tools.Echo\ Function.Balloon\ Declaration\ Stop           :call BalloonDeclarationStop()<CR>
 endif
 
 function! s:EchoFuncDisplay()
@@ -76,7 +82,7 @@ function! s:GetFunctions(fun, fn_only)
         if has_key(i,'kind') && has_key(i,'name') && has_key(i,'signature')
             let name=substitute(i.cmd[2:],i.name.'.*','','g').i.name.i.signature
         else
-            let name=substitute(i.cmd[2:],i.name.'.*','','g').i.name
+            let name=i.name
         endif
         let s:res+=[name.' ('.(index(fil_tag,i)+1).'/'.len(fil_tag).') '.i.filename]
     endfor
@@ -114,14 +120,14 @@ endfunction
 
 function! EchoFuncStart()
     inoremap    <silent>    <buffer>    (       <c-r>=EchoFunc()<cr><bs>(
-"    inoremap    <silent>    <buffer>    <leader>n   <c-r>=EchoFuncN()<cr><bs>
-"    inoremap    <silent>    <buffer>    <leader>p   <c-r>=EchoFuncP()<cr><bs>
+    inoremap    <silent>    <buffer>    <m-=>   <c-r>=EchoFuncN()<cr><bs>
+    inoremap    <silent>    <buffer>    <m-->   <c-r>=EchoFuncP()<cr><bs>
 endfunction
 
 function! EchoFuncStop()
     iunmap      <buffer>    (
-    iunmap      <buffer>    <leader>n
-    iunmap      <buffer>    <leader>p
+    iunmap      <buffer>    <m-=>
+    iunmap      <buffer>    <m-->
 endfunction
 
 function! s:RestoreSettings()
@@ -148,6 +154,57 @@ endfunction
 function! BalloonDeclarationStop()
     set balloonexpr=
     set noballooneval
+endfunction
+
+let s:TagsLanguages=[
+    \ "asm",
+    \ "aspvbs",
+    \ "awk",
+    \ "c",
+    \ "cpp",
+    \ "cs",
+    \ "cobol",
+    \ "eiffel",
+    \ "erlang",
+    \ "fortran",
+    \ "html",
+    \ "java",
+    \ "javascript",
+    \ "lisp",
+    \ "lua",
+    \ "make",
+    \ "pascal",
+    \ "perl",
+    \ "php",
+    \ "plsql",
+    \ "python",
+    \ "rexx",
+    \ "ruby",
+    \ "scheme",
+    \ "sh",
+    \ "zsh",
+    \ "slang",
+    \ "sml",
+    \ "tcl",
+    \ "vera",
+    \ "verilog",
+    \ "vim",
+    \ "yacc"]
+
+function! s:CheckTagsLanguage(filetype)
+    return count(s:TagsLanguages, a:filetype)
+endfunction
+
+function! CheckedEchoFuncStart()
+    if s:CheckTagsLanguage(&filetype)
+        call EchoFuncStart()
+    endif
+endfunction
+
+function! CheckedBalloonDeclarationStart()
+    if s:CheckTagsLanguage(&filetype)
+        call BalloonDeclarationStart()
+    endif
 endfunction
 
 if has("autocmd") && !exists("au_restoremode_loaded")
