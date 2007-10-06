@@ -3,11 +3,11 @@
 " Brief:        Echo the function declaration in
 "               the command line for C/C++.
 " Author:       Mingbai <mbbill AT gmail DOT com>
-" Last Change:  2007/08/08 10:18:47
-" Version:      1.6
+" Last Change:  2007-09-28 21:23:51
+" Version:      1.8
 "
 " Install:      1. Put echofunc.vim to /plugin directory.
-"               2. Use the command below to reate tags
+"               2. Use the command below to create tags
 "                  file including signature field.
 "                  ctags --fields=+S .
 "
@@ -16,8 +16,12 @@
 "               will be displayed in the command line
 "               automatically. Then use alt+-, alt+= to
 "               cycle between function declarations (if exists).
+" Options:      g:EchoFuncTagsLanguages
+"               File types to enable echofunc. Example:
+"               let g:EchoFuncTagsLanguages = ["java","cpp"]
 "
 " Thanks:       edyfox
+"               Wu YongWei
 "
 "==================================================
 
@@ -29,35 +33,33 @@ endif
 
 let s:res=[]
 let s:count=1
-let s:bShowMode=&showmode
-let s:CmdHeight=&cmdheight
-autocmd BufReadPost * call CheckedEchoFuncStart()
-menu        &Tools.Echo\ Function.Echo\ Function\ Start          :call EchoFuncStart()<CR>
-menu        &Tools.Echo\ Function.Echo\ Function\ Stop           :call EchoFuncStop()<CR>
-
-if has("balloon_eval")
-    autocmd BufReadPost * call CheckedBalloonDeclarationStart()
-    menu        &Tools.Echo\ Function.Balloon\ Declaration\ Start          :call BalloonDeclarationStart()<CR>
-    menu        &Tools.Echo\ Function.Balloon\ Declaration\ Stop           :call BalloonDeclarationStop()<CR>
-endif
 
 function! s:EchoFuncDisplay()
     if len(s:res) == 0
         return
     endif
     set noshowmode
-    let wincolumn=&columns
-    if len(s:res[s:count-1]) > (wincolumn-12)
-        set cmdheight=2
-    else
-        set cmdheight=1
+    let content=substitute(s:res[s:count-1],'^\s*','','')
+    let wincols=&columns
+    let allowedheight=&lines/5
+    let statusline=(&laststatus==1 && winnr('$')>1) || (&laststatus==2)
+    let reqspaces_lastline=(statusline || !&ruler) ? 12 : 29
+    let width=len(content)
+    let height=width/wincols+1
+    let cols_lastline=width%wincols
+    if cols_lastline > wincols-reqspaces_lastline
+        let height=height+1
     endif
-    echohl Type | echo s:res[s:count-1] | echohl None
+    if height > allowedheight
+        let height=allowedheight
+    endif
+    let &cmdheight=height
+    echohl Type | echo content | echohl None
 endfunction
 
 function! s:GetFunctions(fun, fn_only)
     let s:res=[]
-    let ftags=taglist(a:fun)
+    let ftags=taglist('^'.a:fun.'$')
     if (type(ftags)==type(0) || ((type(ftags)==type([])) && ftags==[]))
 "        \ && a:fn_only
         return
@@ -89,14 +91,18 @@ function! s:GetFunctions(fun, fn_only)
 endfunction
 
 function! EchoFunc()
-    let fun=substitute(getline('.')[:(col('.'))],'\zs.*\W\ze\w*$','','g') " get function name
+    let fun=substitute(getline('.')[:(col('.')-3)],'.\{-}\W\ze\k*$','','g') " get function name
+    if fun==''
+        return ''
+    endif
     call s:GetFunctions(fun, 1)
     call s:EchoFuncDisplay()
+    return ''
 endfunction
 
 function! EchoFuncN()
     if s:res==[]
-        return
+        return ''
     endif
     if s:count==len(s:res)
         let s:count=1
@@ -104,11 +110,12 @@ function! EchoFuncN()
         let s:count+=1
     endif
     call s:EchoFuncDisplay()
+    return ''
 endfunction
 
 function! EchoFuncP()
     if s:res==[]
-        return
+        return ''
     endif
     if s:count==1
         let s:count=len(s:res)
@@ -116,25 +123,42 @@ function! EchoFuncP()
         let s:count-=1
     endif
     call s:EchoFuncDisplay()
+    return ''
 endfunction
 
 function! EchoFuncStart()
-    inoremap    <silent>    <buffer>    (       <c-r>=EchoFunc()<cr><bs>(
-    inoremap    <silent>    <buffer>    <m-=>   <c-r>=EchoFuncN()<cr><bs>
-    inoremap    <silent>    <buffer>    <m-->   <c-r>=EchoFuncP()<cr><bs>
+    if exists('b:EchoFuncStarted')
+        return
+    endif
+    let b:EchoFuncStarted=1
+    let s:ShowMode=&showmode
+    let s:CmdHeight=&cmdheight
+    inoremap    <silent>    <buffer>    (       (<c-r>=EchoFunc()<cr>
+    inoremap    <silent>    <buffer>    )       )<c-o>:echo<cr>
+    inoremap    <silent>    <buffer>    <m-=>   <c-r>=EchoFuncN()<cr>
+    inoremap    <silent>    <buffer>    <m-->   <c-r>=EchoFuncP()<cr>
 endfunction
 
 function! EchoFuncStop()
+    if !exists('b:EchoFuncStarted')
+        return
+    endif
     iunmap      <buffer>    (
+    iunmap      <buffer>    )
     iunmap      <buffer>    <m-=>
     iunmap      <buffer>    <m-->
+    unlet b:EchoFuncStarted
 endfunction
 
 function! s:RestoreSettings()
-    if s:bShowMode
+    if !exists('b:EchoFuncStarted')
+        return
+    endif
+    if s:ShowMode
         set showmode
     endif
     exec "set cmdheight=".s:CmdHeight
+    echo
 endfunction
 
 function! BalloonDeclaration()
@@ -156,43 +180,45 @@ function! BalloonDeclarationStop()
     set noballooneval
 endfunction
 
-let s:TagsLanguages=[
-    \ "asm",
-    \ "aspvbs",
-    \ "awk",
-    \ "c",
-    \ "cpp",
-    \ "cs",
-    \ "cobol",
-    \ "eiffel",
-    \ "erlang",
-    \ "fortran",
-    \ "html",
-    \ "java",
-    \ "javascript",
-    \ "lisp",
-    \ "lua",
-    \ "make",
-    \ "pascal",
-    \ "perl",
-    \ "php",
-    \ "plsql",
-    \ "python",
-    \ "rexx",
-    \ "ruby",
-    \ "scheme",
-    \ "sh",
-    \ "zsh",
-    \ "slang",
-    \ "sml",
-    \ "tcl",
-    \ "vera",
-    \ "verilog",
-    \ "vim",
-    \ "yacc"]
+if !exists("g:EchoFuncTagsLanguages")
+    let g:EchoFuncTagsLanguages=[
+                \ "asm",
+                \ "aspvbs",
+                \ "awk",
+                \ "c",
+                \ "cpp",
+                \ "cs",
+                \ "cobol",
+                \ "eiffel",
+                \ "erlang",
+                \ "fortran",
+                \ "html",
+                \ "java",
+                \ "javascript",
+                \ "lisp",
+                \ "lua",
+                \ "make",
+                \ "pascal",
+                \ "perl",
+                \ "php",
+                \ "plsql",
+                \ "python",
+                \ "rexx",
+                \ "ruby",
+                \ "scheme",
+                \ "sh",
+                \ "zsh",
+                \ "slang",
+                \ "sml",
+                \ "tcl",
+                \ "vera",
+                \ "verilog",
+                \ "vim",
+                \ "yacc"]
+endif
 
 function! s:CheckTagsLanguage(filetype)
-    return count(s:TagsLanguages, a:filetype)
+    return count(g:EchoFuncTagsLanguages, a:filetype)
 endfunction
 
 function! CheckedEchoFuncStart()
@@ -207,7 +233,33 @@ function! CheckedBalloonDeclarationStart()
     endif
 endfunction
 
-if has("autocmd") && !exists("au_restoremode_loaded")
-    let au_restoremode_loaded=1
-    autocmd InsertLeave * call s:RestoreSettings()
-endif
+function! s:EchoFuncInitialize()
+    augroup EchoFunc
+        autocmd!
+        autocmd InsertLeave * call s:RestoreSettings()
+        autocmd BufRead,BufNewFile * call CheckedEchoFuncStart()
+        if has('gui_running')
+            menu    &Tools.Echo\ F&unction.Echo\ F&unction\ Start   :call EchoFuncStart()<CR>
+            menu    &Tools.Echo\ F&unction.Echo\ Function\ Sto&p    :call EchoFuncStop()<CR>
+        endif
+
+        if has("balloon_eval")
+            autocmd BufRead,BufNewFile * call CheckedBalloonDeclarationStart()
+            if has('gui_running')
+                menu    &Tools.Echo\ Function.&Balloon\ Declaration\ Start  :call BalloonDeclarationStart()<CR>
+                menu    &Tools.Echo\ Function.Balloon\ Declaration\ &Stop   :call BalloonDeclarationStop()<CR>
+            endif
+        endif
+    augroup END
+
+    call CheckedEchoFuncStart()
+    if has("balloon_eval")
+        call CheckedBalloonDeclarationStart()
+    endif
+endfunction
+
+augroup EchoFunc
+    autocmd BufRead,BufNewFile * call s:EchoFuncInitialize()
+augroup END
+
+" vim: set et ff=unix sts=4 sw=4:
