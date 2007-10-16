@@ -3,8 +3,8 @@
 " Brief:        Echo the function declaration in
 "               the command line for C/C++.
 " Author:       Mingbai <mbbill AT gmail DOT com>
-" Last Change:  2007-09-28 21:23:51
-" Version:      1.8
+" Last Change:  2007-10-16 23:19:10
+" Version:      1.9
 "
 " Install:      1. Put echofunc.vim to /plugin directory.
 "               2. Use the command below to create tags
@@ -59,7 +59,7 @@ endfunction
 
 function! s:GetFunctions(fun, fn_only)
     let s:res=[]
-    let ftags=taglist('^'.a:fun.'$')
+    let ftags=taglist('^'.escape(a:fun,'[\*~^').'$')
     if (type(ftags)==type(0) || ((type(ftags)==type([])) && ftags==[]))
 "        \ && a:fn_only
         return
@@ -82,7 +82,11 @@ function! s:GetFunctions(fun, fn_only)
     let s:count=1
     for i in fil_tag
         if has_key(i,'kind') && has_key(i,'name') && has_key(i,'signature')
-            let name=substitute(i.cmd[2:],i.name.'.*','','g').i.name.i.signature
+            let tmppat=escape(i.name,'[\*~^')
+            let tmppat=substitute(tmppat,'\<operator ','operator\\s*','')
+            let tmppat=substitute(tmppat,'^\(.*::\)','\\(\1,\\)\\?','')
+            let tmppat=tmppat.'.*'
+            let name=substitute(i.cmd[2:],tmppat,'','').i.name.i.signature
         else
             let name=i.name
         endif
@@ -90,12 +94,24 @@ function! s:GetFunctions(fun, fn_only)
     endfor
 endfunction
 
+function! s:GetFuncName(text)
+    let name=substitute(a:text,'.\{-}\(\(\k\+::\)*\(\~\?\k*\|'.
+                \'operator\s\+new\(\[]\)\?\|'.
+                \'operator\s\+delete\(\[]\)\?\|'.
+                \'operator\s*[[\]()+\-*/%<>=!~\^&|]\+'.
+                \'\)\)\s*$','\1','')
+    if name =~ '\<operator\>'  " tags have exactly one space after 'operator'
+        let name=substitute(name,'\<operator\s*','operator ','')
+    endif
+    return name
+endfunction
+
 function! EchoFunc()
-    let fun=substitute(getline('.')[:(col('.')-3)],'.\{-}\W\ze\k*$','','g') " get function name
-    if fun==''
+    let name=s:GetFuncName(getline('.')[:(col('.')-3)])
+    if name==''
         return ''
     endif
-    call s:GetFunctions(fun, 1)
+    call s:GetFunctions(name, 1)
     call s:EchoFuncDisplay()
     return ''
 endfunction
@@ -162,7 +178,28 @@ function! s:RestoreSettings()
 endfunction
 
 function! BalloonDeclaration()
-    call s:GetFunctions(v:beval_text, 0)
+    let line=getline(v:beval_lnum)
+    let pos=v:beval_col - 1
+    let endpos=match(line, '\W', pos)
+    if endpos != -1
+        if v:beval_text == 'operator'
+            if line[endpos :] =~ '^\s*\(new\(\[]\)\?\|delete\(\[]\)\?\|[[\]+\-*/%<>=!~\^&|]\+\|()\)'
+                let endpos=matchend(line, '^\s*\(new\(\[]\)\?\|delete\(\[]\)\?\|[[\]+\-*/%<>=!~\^&|]\+\|()\)',endpos)
+            endif
+        elseif v:beval_text == 'new' || v:beval_text == 'delete'
+            if line[:endpos+1] =~ 'operator\s\+\(new\|delete\)\[]$'
+                let endpos=endpos+2
+            endif
+        endif
+    endif
+    if (endpos != -1)
+        let endpos=endpos - 1
+    endif
+    let name=s:GetFuncName(line[0:endpos])
+    if name==''
+        return ''
+    endif
+    call s:GetFunctions(name, 0)
     let result = ""
     for item in s:res
         let result = result . item . "\n"
@@ -262,4 +299,4 @@ augroup EchoFunc
     autocmd BufRead,BufNewFile * call s:EchoFuncInitialize()
 augroup END
 
-" vim: set et ff=unix sts=4 sw=4:
+" vim: set et sts=4 sw=4:
