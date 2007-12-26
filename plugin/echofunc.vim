@@ -6,8 +6,8 @@
 "               supports.
 " Authors:      Ming Bai <mbbill AT gmail DOT com>,
 "               Wu Yongwei <wuyongwei AT gmail DOT com>
-" Last Change:  2007-11-26 23:28:16
-" Version:      1.17
+" Last Change:  2007-12-26 21:41:48
+" Version:      1.18
 "
 " Install:      1. Put echofunc.vim to /plugin directory.
 "               2. Use the command below to create tags
@@ -251,7 +251,7 @@ function! EchoFuncStart()
     let s:ShowMode=&showmode
     let s:CmdHeight=&cmdheight
     inoremap    <silent>    <buffer>    (       (<c-r>=EchoFunc()<cr>
-    inoremap    <silent>    <buffer>    )       )<c-\><c-o>:echo<cr>
+    inoremap    <silent>    <buffer>    )       <c-\><c-o>:echo<cr>)
     exec 'inoremap <silent> <buffer> ' . g:EchoFuncKeyNext . ' <c-r>=EchoFuncN()<cr>'
     exec 'inoremap <silent> <buffer> ' . g:EchoFuncKeyPrev . ' <c-r>=EchoFuncP()<cr>'
 endfunction
