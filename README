@@ -7,8 +7,7 @@ This is a mirror of http://www.vim.org/scripts/script.php?script_id=1735
                as other languages that ctags                           
                supports.                                               
  Authors:      Ming Bai <mbbill AT gmail DOT com>,                     
-               Wu Yongwei <wuyongwei AT gmail DOT com>          
- Version:      1.3                                                     
+               Wu Yongwei <wuyongwei AT gmail DOT com>                                                          
                                                                        
  Install:      1. Put echofunc.vim to /plugin directory.               
                2. Use the command below to create tags                 
